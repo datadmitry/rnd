@@ -1,0 +1,353 @@
+<!-- npm install -g vercel -->
+<!-- vercel -->
+<!-- vercel --prod -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Цифровая грамотность</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <style>
+        .sim-area {
+            display: none;
+            background: #e8f4ff;
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .course-card {
+            transition: transform 0.2s;
+        }
+        .course-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand">Цифровая грамотность</span>
+            <span id="userInfo" style="display:none">
+                <span id="currentUser" class="me-2"></span>
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">Выйти</button>
+            </span>
+        </div>
+    </nav>
+    
+    <div class="container my-4">
+        <!-- Форма входа -->
+        <div id="loginView">
+            <div class="card mx-auto shadow" style="max-width: 400px;">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Вход в систему</h3>
+                    <div class="mb-3">
+                        <input id="username" class="form-control form-control-lg" placeholder="Имя пользователя" required>
+                    </div>
+                    <div class="mb-3">
+                        <input id="password" type="password" class="form-control form-control-lg" placeholder="Пароль" required>
+                    </div>
+                    <button class="btn btn-primary btn-lg w-100 mb-2" onclick="login()">Войти</button>
+                    <button class="btn btn-outline-primary btn-lg w-100" onclick="register()">Регистрация</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Основная часть -->
+        <div id="mainView" style="display:none">
+            <!-- Блок с курсами -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <h3 class="card-title mb-3">Курсы обучения</h3>
+                    <p class="text-muted mb-4">Выберите курс для начала обучения</p>
+                    <div class="row g-4" id="coursesContainer"></div>
+                </div>
+            </div>
+            
+            <!-- Прогресс -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Ваш прогресс</h4>
+                    <div id="progressContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Список курсов
+        const courses = [
+            { id: 'phone', name: 'Основы смартфона', description: 'Научитесь использовать основные функции смартфона' },
+            { id: 'max', name: 'Мессенджер MAX', description: 'Освойте общение через популярный мессенджер' },
+            { id: 'shop', name: 'Онлайн-покупки', description: 'Безопасные покупки в интернет-магазинах' },
+            { id: 'gos', name: 'Госуслуги', description: 'Работа с порталом государственных услуг' }
+        ];
+
+        // Текущий пользователь
+        let currentUser = '';
+
+        // Когда страница загрузилась
+        window.addEventListener('DOMContentLoaded', function() {
+            // Проверяем, есть ли сохраненный пользователь
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                loginUser(savedUser);
+            }
+            
+            // Делаем чтобы по Enter тоже можно было войти
+            document.getElementById('username').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') login();
+            });
+            document.getElementById('password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') login();
+            });
+            
+            // Если нет пользователей в localStorage, создаем демо
+            if (!localStorage.getItem('users')) {
+                localStorage.setItem('users', JSON.stringify([
+                    { username: 'demo', password: 'demo' },
+                    { username: 'user', password: '123' }
+                ]));
+                localStorage.setItem('progress', JSON.stringify({
+                    demo: { completed: ['phone'] },
+                    user: { completed: [] }
+                }));
+            }
+        });
+
+        // Функция входа
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            // Проверяем что поля не пустые
+            if (!username || !password) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            // Ищем пользователя
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                loginUser(username);
+                alert('Вход выполнен успешно!');
+            } else {
+                alert('Неверное имя пользователя или пароль');
+            }
+        }
+
+        // Функция регистрации
+        function register() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+            
+            // Минимальная длина логина
+            if (username.length < 3) {
+                alert('Имя пользователя должно быть не менее 3 символов');
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('users') || '[]');
+            
+            // Проверяем нет ли уже такого пользователя
+            if (users.some(u => u.username === username)) {
+                alert('Пользователь с таким именем уже существует');
+                return;
+            }
+            
+            // Добавляем нового пользователя
+            users.push({ username, password });
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            // Создаем запись для прогресса
+            const progress = JSON.parse(localStorage.getItem('progress') || '{}');
+            progress[username] = { completed: [] };
+            localStorage.setItem('progress', JSON.stringify(progress));
+            
+            alert('Регистрация прошла успешно! Теперь войдите в систему.');
+            
+            // Очищаем поля
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // Вход пользователя
+        function loginUser(username) {
+            currentUser = username;
+            localStorage.setItem('currentUser', username);
+            
+            // Меняем экраны
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('mainView').style.display = 'block';
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('currentUser').textContent = username;
+            
+            // Показываем курсы и прогресс
+            renderCourses();
+            updateProgress();
+        }
+
+        // Выход
+        function logout() {
+            currentUser = '';
+            localStorage.removeItem('currentUser');
+            
+            // Возвращаем на экран входа
+            document.getElementById('loginView').style.display = 'block';
+            document.getElementById('mainView').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'none';
+            
+            // Очищаем поля
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // Рендерим карточки курсов
+        function renderCourses() {
+            const container = document.getElementById('coursesContainer');
+            const progress = JSON.parse(localStorage.getItem('progress') || '{}');
+            const userProgress = progress[currentUser] || { completed: [] };
+            const completedCourses = userProgress.completed || [];
+            
+            // Создаем HTML для каждого курса
+            container.innerHTML = courses.map(course => {
+                const isCompleted = completedCourses.includes(course.id);
+                
+                return `
+                <div class="col-md-6 col-lg-3">
+                    <div class="card course-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">${course.name}</h5>
+                            <p class="card-text text-muted small">${course.description}</p>
+                            
+                            ${isCompleted 
+                                ? '<span class="badge bg-success">Завершено</span>' 
+                                : `<button class="btn btn-primary btn-sm" onclick="startCourse('${course.id}')">Начать курс</button>`
+                            }
+                            
+                            <div id="${course.id}-sim" class="sim-area">
+                                <p class="small mb-2"><strong>Симуляция:</strong> ${course.name}</p>
+                                <div class="d-flex gap-2 mb-3">
+                                    <button class="btn btn-secondary btn-sm" onclick="simulateAction('${course.id}')">Действие 1</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="simulateAction('${course.id}')">Действие 2</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="simulateAction('${course.id}')">Действие 3</button>
+                                </div>
+                                <div>
+                                    <button class="btn btn-success btn-sm" onclick="completeCourse('${course.id}')">Завершить курс</button>
+                                    <button class="btn btn-outline-secondary btn-sm ms-2" onclick="hideSimulation('${course.id}')">Скрыть</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Показываем симуляцию для курса
+        function startCourse(courseId) {
+            // Сначала скрываем все симуляции
+            courses.forEach(course => {
+                const simElement = document.getElementById(`${course.id}-sim`);
+                if (simElement) simElement.style.display = 'none';
+            });
+            
+            // Потом показываем нужную
+            const simElement = document.getElementById(`${courseId}-sim`);
+            if (simElement) {
+                simElement.style.display = 'block';
+                simElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Скрываем симуляцию
+        function hideSimulation(courseId) {
+            const simElement = document.getElementById(`${courseId}-sim`);
+            if (simElement) simElement.style.display = 'none';
+        }
+
+        // Симуляция действия
+        function simulateAction(courseId) {
+            const course = courses.find(c => c.id === courseId);
+            alert(`Действие в курсе "${course?.name}" выполнено успешно!`);
+        }
+
+        // Завершение курса
+        function completeCourse(courseId) {
+            const progress = JSON.parse(localStorage.getItem('progress') || '{}');
+            
+            // Если нет прогресса для пользователя, создаем
+            if (!progress[currentUser]) {
+                progress[currentUser] = { completed: [] };
+            }
+            
+            // Если нет массива completed, создаем
+            if (!progress[currentUser].completed) {
+                progress[currentUser].completed = [];
+            }
+            
+            // Добавляем курс в завершенные если его еще нет
+            if (!progress[currentUser].completed.includes(courseId)) {
+                progress[currentUser].completed.push(courseId);
+                localStorage.setItem('progress', JSON.stringify(progress));
+                
+                const course = courses.find(c => c.id === courseId);
+                alert(`Поздравляем! Курс "${course?.name}" успешно завершен!`);
+                
+                // Обновляем интерфейс
+                renderCourses();
+                updateProgress();
+                hideSimulation(courseId);
+            }
+        }
+
+        // Обновляем отображение прогресса
+        function updateProgress() {
+            const container = document.getElementById('progressContainer');
+            const progress = JSON.parse(localStorage.getItem('progress') || '{}');
+            const userProgress = progress[currentUser] || { completed: [] };
+            const completedCourses = userProgress.completed || [];
+            
+            // Считаем проценты
+            const completedCount = completedCourses.length;
+            const totalCount = courses.length;
+            const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            
+            // Формируем HTML
+            container.innerHTML = `
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-medium">Общий прогресс:</span>
+                        <span class="fw-bold text-primary">${completedCount}/${totalCount} (${percentage}%)</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    ${courses.map(course => {
+                        const isCompleted = completedCourses.includes(course.id);
+                        return `
+                        <div class="col-6 mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="me-2">${isCompleted ? '✅' : '⭕'}</span>
+                                <span class="${isCompleted ? 'text-success fw-medium' : 'text-muted'}">
+                                    ${course.name}
+                                </span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
